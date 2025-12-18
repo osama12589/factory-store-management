@@ -13,7 +13,15 @@ connectDB();
 
 const app = express();
 
-app.use(cors());
+app.use(cors({
+  origin: [
+    'http://localhost:5173',
+    'http://localhost:3000',
+    'https://your-frontend-domain.vercel.app', // Add your actual frontend domain
+    /\.vercel\.app$/ // Allow all Vercel preview deployments
+  ],
+  credentials: true
+}));
 app.use(express.json());
 
 app.use('/api/categories', categoryRoutes);
