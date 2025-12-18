@@ -1,11 +1,11 @@
 import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
 
 export const apiSlice = createApi({
-  reducerPath: 'api',  
-
+  reducerPath: 'api',
+  
   baseQuery: fetchBaseQuery({
-    baseURL: import.meta.env.VITE_API_BASE_URL,
-    prepareHeaders: (headers, { getState, endpoint }) => {
+    baseUrl: import.meta.env.VITE_API_BASE_URL || 'https://factory-store-management.vercel.app/api',
+    prepareHeaders: (headers, { endpoint }) => {
       const isFormData = endpoint === 'createItem' || endpoint === 'updateItem';
       if (isFormData) {
         headers.delete('Content-Type');

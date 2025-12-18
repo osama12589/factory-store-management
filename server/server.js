@@ -23,4 +23,5 @@ app.use('/api/transactions', transactionRoutes);
 app.get('/', (req, res) => res.send('Factory Store API Running'));
 
 const PORT = process.env.PORT || 5000;
+
 module.exports = app;
