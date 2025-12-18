@@ -1,0 +1,77 @@
+# Environment Variables
+.env
+.env.local
+.env.development
+.env.test
+.env.production
+.env.*.local
+
+# Dependencies
+node_modules/
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# Build outputs
+dist/
+build/
+.vite/
+*.tsbuildinfo
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea/
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+*.swp
+*~
+
+# Testing
+coverage/
+*.lcov
+.nyc_output
+
+# Temporary files
+*.tmp
+*.temp
+.cache/
+
+# OS files
+Thumbs.db
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Database files (if using SQLite)
+*.sqlite
+*.sqlite3
+*.db
+
+# Uploads directory (if storing files locally)
+uploads/
+public/uploads/
+
+# Production files you might generate
+*.production
+
+# Local development files
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Miscellaneous
+.eslintcache

@@ -1,0 +1,96 @@
+@import "tailwindcss";
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: scale(0.95); }
+  to { opacity: 1; transform: scale(1); }
+}
+.animate-fadeIn {
+  animation: fadeIn 0.15s ease-out;
+}
+
+
+/* Print Styles for Compact Slip */
+@media print {
+  /* Hide everything except the slip */
+  body * {
+    visibility: hidden;
+  }
+  
+  /* Show only the print content */
+  .print\:block,
+  .print\:block * {
+    visibility: visible;
+  }
+  
+  /* Position the slip at top-left for printing */
+  .print\:block {
+    position: absolute;
+    left: 0;
+    top: 0;
+  }
+  
+  /* Page setup for compact slip */
+  @page {
+    size: A5 portrait; /* Half of A4 */
+    margin: 0.5cm;
+  }
+  
+  /* Remove shadows and transitions for print */
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    box-shadow: none !important;
+    text-shadow: none !important;
+  }
+  
+  /* Ensure backgrounds print */
+  .bg-yellow-50,
+  .bg-gray-50,
+  .bg-gray-100 {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+  
+  /* Hide print button and modal overlay */
+  button,
+  .print\:hidden {
+    display: none !important;
+  }
+  
+  /* Compact sizing for slip */
+  .print\:p-4 {
+    padding: 1rem !important;
+  }
+  
+  /* Ensure proper page breaks */
+  .slip-container {
+    page-break-after: always;
+    page-break-inside: avoid;
+  }
+  
+  /* Force black text for better print quality */
+  body {
+    color: #000 !important;
+    background: #fff !important;
+  }
+}
+
+/* Optional: Fade in animation for modals */
+.modal-enter {
+  opacity: 0;
+  transform: scale(0.95);
+}
+
+.modal-enter-active {
+  opacity: 1;
+  transform: scale(1);
+  transition: opacity 200ms, transform 200ms;
+}
+
+/* Optional: Print preview styling */
+.print-preview {
+  max-width: 400px;
+  margin: 0 auto;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
