@@ -17,7 +17,7 @@ app.use(cors({
   origin: [
     'http://localhost:5173',
     'http://localhost:3000',
-    'https://your-frontend-domain.vercel.app', // Add your actual frontend domain
+    'https://factory-store-management-chf7.vercel.app', // Add your actual frontend domain
     /\.vercel\.app$/ // Allow all Vercel preview deployments
   ],
   credentials: true
