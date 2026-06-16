@@ -2,64 +2,99 @@ const Item = require('../models/Item');
 const Transaction = require('../models/Transaction');
 
 const getItems = async (req, res) => {
-  const { category } = req.query;
-  const query = category ? { category } : {};
+  try {
+    const { category } = req.query;
+    const query = category ? { category } : {};
 
-  const items = await Item.find(query)
-    .populate('category', 'name')
-    .sort('-createdAt');
+    const items = await Item.find(query)
+      .populate('category', 'name')
+      .sort('-createdAt');
 
-  res.json(items);
+    res.json(items);
+  } catch (err) {
+    console.error('getItems error:', err);
+    res.status(500).json({ message: err.message });
+  }
 };
 
 const createItem = async (req, res) => {
   try {
-    const { name, category, quantity, minQuantity, unit, borrowable } = req.body;
+    const { name, category, quantity, minQuantity, unit } = req.body;
     const imageUrl = req.file ? req.file.path : null;
 
+    if (!name || !name.trim()) {
+      return res.status(400).json({ message: 'Item name is required' });
+    }
+
+    if (!category) {
+      return res.status(400).json({ message: 'Category is required' });
+    }
+
     const item = await Item.create({
-      name,
+      name: name.trim(),
       category,
-      quantity: quantity || 0,
-      minQuantity: minQuantity || 0,
+      quantity: Number(quantity) || 0,
+      minQuantity: Number(minQuantity) || 0,
       unit: unit || 'pcs',
-      borrowable: borrowable === 'true' || borrowable === true,
       imageUrl,
     });
 
     res.status(201).json(item);
   } catch (err) {
-    console.error('Create item error:', err);
+    console.error('createItem error:', err);
     res.status(500).json({ message: err.message });
   }
 };
 
 const updateItem = async (req, res) => {
   try {
-    const updates = { ...req.body };
-    
-    if ('borrowable' in updates) {
-      updates.borrowable = updates.borrowable === 'true' || updates.borrowable === true;
-    }
-    
+    // quantity is intentionally excluded — stock must only move via transactions
+    const { name, category, minQuantity, unit } = req.body;
+    const updates = {};
+
+    if (name !== undefined) updates.name = name.trim();
+    if (category !== undefined) updates.category = category;
+    if (minQuantity !== undefined) updates.minQuantity = Number(minQuantity);
+    if (unit !== undefined) updates.unit = unit;
     if (req.file) updates.imageUrl = req.file.path;
 
+    if (Object.keys(updates).length === 0) {
+      return res.status(400).json({ message: 'No valid fields provided for update' });
+    }
+
     const item = await Item.findByIdAndUpdate(
-      req.params.id, 
-      updates, 
+      req.params.id,
+      updates,
       { new: true, runValidators: true }
     );
-    
+
+    if (!item) {
+      return res.status(404).json({ message: 'Item not found' });
+    }
+
     res.json(item);
   } catch (err) {
-    console.error('Update item error:', err);
+    console.error('updateItem error:', err);
     res.status(500).json({ message: err.message });
   }
 };
 
 const deleteItem = async (req, res) => {
-  await Item.findByIdAndDelete(req.params.id);
-  res.json({ message: 'Deleted' });
+  try {
+    const item = await Item.findById(req.params.id);
+    if (!item) {
+      return res.status(404).json({ message: 'Item not found' });
+    }
+
+    // Remove all transactions tied to this item before deleting
+    await Transaction.deleteMany({ item: req.params.id });
+    await Item.findByIdAndDelete(req.params.id);
+
+    res.json({ message: 'Item and its transaction history deleted' });
+  } catch (err) {
+    console.error('deleteItem error:', err);
+    res.status(500).json({ message: err.message });
+  }
 };
 
 module.exports = {
