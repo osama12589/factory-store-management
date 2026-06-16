@@ -1,20 +1,25 @@
 import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
 
 export const apiSlice = createApi({
-  reducerPath: 'api',
-  
+  reducerPath: 'api',  
+
   baseQuery: fetchBaseQuery({
-    baseUrl: import.meta.env.VITE_API_BASE_URL || 'https://factory-store-management.vercel.app/api',
-    prepareHeaders: (headers, { endpoint }) => {
+    baseUrl: 'http://localhost:5000/api',
+
+      prepareHeaders: (headers, { getState, endpoint }) => {
+      // Don't set Content-Type when uploading files (FormData)
+      // Let browser set it automatically with the correct boundary
       const isFormData = endpoint === 'createItem' || endpoint === 'updateItem';
+
       if (isFormData) {
-        headers.delete('Content-Type');
+        headers.delete('Content-Type'); // Let browser set multipart boundary
       }
+
       return headers;
     },
   }),
 
-  tagTypes: ['Category', 'Item', 'Transaction', 'ActiveBorrows'],
+  tagTypes: ['Category', 'Item', 'Transaction'],
 
   endpoints: (builder) => ({
 
@@ -50,81 +55,56 @@ export const apiSlice = createApi({
   }),
 
   getItems: builder.query({
-    query: () => '/items',
-    providesTags: ['Item'],
+  query: () => '/items',
+  providesTags: ['Item'],
+}),
+createItem: builder.mutation({
+  query: (formData) => ({
+    url: '/items',
+    method: 'POST',
+    body: formData, // formData can include image if using multipart/form-data
   }),
+  invalidatesTags: ['Item'],
+}),
+updateItem: builder.mutation({
+  query: ({ id, formData }) => ({
+    url: `/items/${id}`,
+    method: 'PUT',
+    body: formData,
+  }),
+  invalidatesTags: ['Item'],
+}),
+deleteItem: builder.mutation({
+  query: (id) => ({
+    url: `/items/${id}`,
+    method: 'DELETE',
+  }),
+  invalidatesTags: ['Item'],
+}),
 
-  createItem: builder.mutation({
-    query: (formData) => ({
-      url: '/items',
-      method: 'POST',
-      body: formData,
-    }),
-    invalidatesTags: ['Item'],
-  }),
+getTransactions: builder.query({
+  query: () => '/transactions',
+  providesTags: ['Transaction'],
+}),
 
-  updateItem: builder.mutation({
-    query: ({ id, formData }) => ({
-      url: `/items/${id}`,
-      method: 'PUT',
-      body: formData,
-    }),
-    invalidatesTags: ['Item'],
+addStock: builder.mutation({
+  query: ({ id, quantity }) => ({
+    url: `/transactions/add-stock/${id}`,
+    method: 'POST',
+    body: { quantity },
   }),
+  invalidatesTags: ['Item', 'Transaction'],
+}),
 
-  deleteItem: builder.mutation({
-    query: (id) => ({
-      url: `/items/${id}`,
-      method: 'DELETE',
-    }),
-    invalidatesTags: ['Item'],
+issueStock: builder.mutation({
+  query: ({ id, quantity, receiver }) => ({
+    url: `/transactions/issue/${id}`,
+    method: 'POST',
+    body: { quantity, receiver },
   }),
+  invalidatesTags: ['Item', 'Transaction'],
+}),
 
-  getTransactions: builder.query({
-    query: () => '/transactions',
-    providesTags: ['Transaction'],
-  }),
-
-  addStock: builder.mutation({
-    query: ({ id, quantity }) => ({
-      url: `/transactions/add-stock/${id}`,
-      method: 'POST',
-      body: { quantity },
-    }),
-    invalidatesTags: ['Item', 'Transaction'],
-  }),
-
-  issueStock: builder.mutation({
-    query: ({ id, quantity, receiver }) => ({
-      url: `/transactions/issue/${id}`,
-      method: 'POST',
-      body: { quantity, receiver },
-    }),
-    invalidatesTags: ['Item', 'Transaction'],
-  }),
-
-  borrowItem: builder.mutation({
-    query: ({ id, quantity, receiver, expectedReturnDate, notes }) => ({
-      url: `/transactions/borrow/${id}`,
-      method: 'POST',
-      body: { quantity, receiver, expectedReturnDate, notes },
-    }),
-    invalidatesTags: ['Item', 'Transaction', 'ActiveBorrows'],
-  }),
-
-  returnItem: builder.mutation({
-    query: ({ borrowTransactionId, notes }) => ({
-      url: '/transactions/return',
-      method: 'POST',
-      body: { borrowTransactionId, notes },
-    }),
-    invalidatesTags: ['Item', 'Transaction', 'ActiveBorrows'],
-  }),
-
-  getActiveBorrows: builder.query({
-    query: () => '/transactions/active-borrows',
-    providesTags: ['ActiveBorrows'],
-  }),
 
 }),
 
@@ -144,7 +124,4 @@ export const {
   useGetTransactionsQuery,
   useAddStockMutation,
   useIssueStockMutation,
-  useBorrowItemMutation,
-  useReturnItemMutation,
-  useGetActiveBorrowsQuery,
 } = apiSlice;
