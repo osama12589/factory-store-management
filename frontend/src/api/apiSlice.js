@@ -1,20 +1,16 @@
 import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
 
 export const apiSlice = createApi({
-  reducerPath: 'api',  
+  reducerPath: 'api',
 
   baseQuery: fetchBaseQuery({
     baseUrl: 'http://localhost:5000/api',
 
-      prepareHeaders: (headers, { getState, endpoint }) => {
-      // Don't set Content-Type when uploading files (FormData)
-      // Let browser set it automatically with the correct boundary
+    prepareHeaders: (headers, { endpoint }) => {
       const isFormData = endpoint === 'createItem' || endpoint === 'updateItem';
-
       if (isFormData) {
-        headers.delete('Content-Type'); // Let browser set multipart boundary
+        headers.delete('Content-Type');
       }
-
       return headers;
     },
   }),
@@ -23,91 +19,119 @@ export const apiSlice = createApi({
 
   endpoints: (builder) => ({
 
-  getCategories: builder.query({
-    query: () => '/categories',
-    providesTags: ['Category'],
-  }),
-
-  createCategory: builder.mutation({
-    query: (body) => ({
-      url: '/categories',
-      method: 'POST',
-      body,
+    // ─── Categories ────────────────────────────────────────────────────────────
+    getCategories: builder.query({
+      query: () => '/categories',
+      providesTags: ['Category'],
     }),
-    invalidatesTags: ['Category'],
-  }),
 
-  updateCategory: builder.mutation({
-    query: ({ id, ...body }) => ({
-      url: `/categories/${id}`,
-      method: 'PUT',
-      body,
+    createCategory: builder.mutation({
+      query: (body) => ({
+        url: '/categories',
+        method: 'POST',
+        body,
+      }),
+      invalidatesTags: ['Category'],
     }),
-    invalidatesTags: ['Category'],
-  }),
 
-  deleteCategory: builder.mutation({
-    query: (id) => ({
-      url: `/categories/${id}`,
-      method: 'DELETE',
+    updateCategory: builder.mutation({
+      query: ({ id, ...body }) => ({
+        url: `/categories/${id}`,
+        method: 'PUT',
+        body,
+      }),
+      invalidatesTags: ['Category'],
     }),
-    invalidatesTags: ['Category'],
+
+    deleteCategory: builder.mutation({
+      query: (id) => ({
+        url: `/categories/${id}`,
+        method: 'DELETE',
+      }),
+      invalidatesTags: ['Category'],
+    }),
+
+    // ─── Items ─────────────────────────────────────────────────────────────────
+    getItems: builder.query({
+      query: () => '/items',
+      providesTags: ['Item'],
+    }),
+
+    createItem: builder.mutation({
+      query: (formData) => ({
+        url: '/items',
+        method: 'POST',
+        body: formData,
+      }),
+      invalidatesTags: ['Item'],
+    }),
+
+    updateItem: builder.mutation({
+      query: ({ id, formData }) => ({
+        url: `/items/${id}`,
+        method: 'PUT',
+        body: formData,
+      }),
+      invalidatesTags: ['Item'],
+    }),
+
+    deleteItem: builder.mutation({
+      query: (id) => ({
+        url: `/items/${id}`,
+        method: 'DELETE',
+      }),
+      invalidatesTags: ['Item'],
+    }),
+
+    // ─── Transactions ──────────────────────────────────────────────────────────
+    getTransactions: builder.query({
+      query: () => '/transactions',
+      providesTags: ['Transaction'],
+    }),
+
+    addStock: builder.mutation({
+      query: ({ id, quantity, notes }) => ({
+        url: `/transactions/add-stock/${id}`,
+        method: 'POST',
+        body: { quantity, notes },
+      }),
+      invalidatesTags: ['Item', 'Transaction'],
+    }),
+
+    issueStock: builder.mutation({
+      query: ({ id, quantity, receiver, notes }) => ({
+        url: `/transactions/issue/${id}`,
+        method: 'POST',
+        body: { quantity, receiver, notes },
+      }),
+      invalidatesTags: ['Item', 'Transaction'],
+    }),
+
+    // ─── Borrow / Return ───────────────────────────────────────────────────────
+    borrowItem: builder.mutation({
+      query: ({ id, quantity, borrower, notes, expectedReturnDate }) => ({
+        url: `/transactions/borrow/${id}`,
+        method: 'POST',
+        body: { quantity, borrower, notes, expectedReturnDate },
+      }),
+      invalidatesTags: ['Item', 'Transaction'],
+    }),
+
+    returnItem: builder.mutation({
+      query: ({ transactionId, notes }) => ({
+        url: '/transactions/return',
+        method: 'POST',
+        body: { transactionId, notes },
+      }),
+      invalidatesTags: ['Item', 'Transaction'],
+    }),
+
+    getActiveBorrows: builder.query({
+      query: () => '/transactions/active-borrows',
+      providesTags: ['Transaction'],
+    }),
+
   }),
-
-  getItems: builder.query({
-  query: () => '/items',
-  providesTags: ['Item'],
-}),
-createItem: builder.mutation({
-  query: (formData) => ({
-    url: '/items',
-    method: 'POST',
-    body: formData, // formData can include image if using multipart/form-data
-  }),
-  invalidatesTags: ['Item'],
-}),
-updateItem: builder.mutation({
-  query: ({ id, formData }) => ({
-    url: `/items/${id}`,
-    method: 'PUT',
-    body: formData,
-  }),
-  invalidatesTags: ['Item'],
-}),
-deleteItem: builder.mutation({
-  query: (id) => ({
-    url: `/items/${id}`,
-    method: 'DELETE',
-  }),
-  invalidatesTags: ['Item'],
-}),
-
-getTransactions: builder.query({
-  query: () => '/transactions',
-  providesTags: ['Transaction'],
-}),
-
-addStock: builder.mutation({
-  query: ({ id, quantity }) => ({
-    url: `/transactions/add-stock/${id}`,
-    method: 'POST',
-    body: { quantity },
-  }),
-  invalidatesTags: ['Item', 'Transaction'],
-}),
-
-issueStock: builder.mutation({
-  query: ({ id, quantity, receiver }) => ({
-    url: `/transactions/issue/${id}`,
-    method: 'POST',
-    body: { quantity, receiver },
-  }),
-  invalidatesTags: ['Item', 'Transaction'],
-}),
-
-
-}),
-
 });
 
 export const {
@@ -124,4 +148,7 @@ export const {
   useGetTransactionsQuery,
   useAddStockMutation,
   useIssueStockMutation,
+  useBorrowItemMutation,
+  useReturnItemMutation,
+  useGetActiveBorrowsQuery,
 } = apiSlice;
