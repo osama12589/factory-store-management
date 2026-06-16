@@ -108,12 +108,24 @@ export const apiSlice = createApi({
     }),
 
     // ─── Borrow / Return ───────────────────────────────────────────────────────
-    borrowItem: builder.mutation({
-      query: ({ id, quantity, borrower, notes, expectedReturnDate }) => ({
-        url: `/transactions/borrow/${id}`,
-        method: 'POST',
-        body: { quantity, borrower, notes, expectedReturnDate },
-      }),
+    // 🚀 FIXED: Captures any version of the name and passes both borrower and receiver fields 
+    borrowStock: builder.mutation({
+      query: ({ id, quantity, borrower, receiver, borrowerName, notes, expectedReturnDate }) => {
+        // Fallback chain grabs whichever string naming convention was supplied by the component
+        const finalName = borrower || receiver || borrowerName || "";
+        
+        return {
+          url: `/transactions/borrow/${id}`,
+          method: 'POST',
+          body: { 
+            quantity, 
+            borrower: finalName.trim(), // satisfies your controller condition
+            receiver: finalName.trim(), // satisfies your mongoose database validator schema
+            notes, 
+            expectedReturnDate 
+          },
+        };
+      },
       invalidatesTags: ['Item', 'Transaction'],
     }),
 
@@ -127,9 +139,13 @@ export const apiSlice = createApi({
     }),
 
     getActiveBorrows: builder.query({
-      query: () => '/transactions/active-borrows',
-      providesTags: ['Transaction'],
-    }),
+  query: () => ({
+    url: '/transactions/active-borrows',
+    params: { _: Date.now() },
+  }),
+  providesTags: ['Transaction'],
+  keepUnusedDataFor: 0,
+}),
 
   }),
 });
@@ -148,7 +164,8 @@ export const {
   useGetTransactionsQuery,
   useAddStockMutation,
   useIssueStockMutation,
-  useBorrowItemMutation,
+  
+  useBorrowStockMutation,
   useReturnItemMutation,
   useGetActiveBorrowsQuery,
 } = apiSlice;

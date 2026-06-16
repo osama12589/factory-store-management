@@ -17,9 +17,12 @@ const getItems = async (req, res) => {
   }
 };
 
+// ... existing imports ...
+
 const createItem = async (req, res) => {
   try {
-    const { name, category, quantity, minQuantity, unit } = req.body;
+    // ADDED: borrowable
+    const { name, category, quantity, minQuantity, unit, borrowable } = req.body;
     const imageUrl = req.file ? req.file.path : null;
 
     if (!name || !name.trim()) {
@@ -37,6 +40,8 @@ const createItem = async (req, res) => {
       minQuantity: Number(minQuantity) || 0,
       unit: unit || 'pcs',
       imageUrl,
+      // CONVERT string to boolean
+      borrowable: borrowable === 'true',
     });
 
     res.status(201).json(item);
@@ -48,14 +53,17 @@ const createItem = async (req, res) => {
 
 const updateItem = async (req, res) => {
   try {
-    // quantity is intentionally excluded — stock must only move via transactions
-    const { name, category, minQuantity, unit } = req.body;
+    // ADDED: borrowable
+    const { name, category, minQuantity, unit, borrowable } = req.body;
     const updates = {};
 
     if (name !== undefined) updates.name = name.trim();
     if (category !== undefined) updates.category = category;
     if (minQuantity !== undefined) updates.minQuantity = Number(minQuantity);
     if (unit !== undefined) updates.unit = unit;
+    
+    // CONVERT string to boolean
+    if (borrowable !== undefined) updates.borrowable = borrowable === 'true';
     if (req.file) updates.imageUrl = req.file.path;
 
     if (Object.keys(updates).length === 0) {
@@ -78,6 +86,8 @@ const updateItem = async (req, res) => {
     res.status(500).json({ message: err.message });
   }
 };
+
+// ... keep existing getItems, deleteItem, and module.exports ...
 
 const deleteItem = async (req, res) => {
   try {

@@ -3,7 +3,7 @@ import { useState, useMemo } from "react";
 import { FaFileAlt, FaSearch, FaDownload, FaFilter } from "react-icons/fa";
 
 export default function Reports() {
-  const { data: items = [], isLoading } = useGetItemsQuery();
+  const { data: rawItems = [], isLoading } = useGetItemsQuery();
   const { data: categories = [] } = useGetCategoriesQuery();
 
   // Get user role from localStorage
@@ -13,6 +13,18 @@ export default function Reports() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("");
   const [stockFilter, setStockFilter] = useState("all");
+
+  // Normalize items to guarantee 'borrowable' is always treated as a strict boolean
+  const items = useMemo(() => {
+    return rawItems.map(item => ({
+      ...item,
+      borrowable: 
+        item.borrowable === true || 
+        item.borrowable === "true" || 
+        item.isBorrowable === true || 
+        item.isBorrowable === "true"
+    }));
+  }, [rawItems]);
 
   const filteredItems = useMemo(() => {
     let result = items;
@@ -104,7 +116,6 @@ export default function Reports() {
           >
             <FaDownload /> Export CSV
           </button>
-          
         </div>
       </div>
 
@@ -168,7 +179,7 @@ export default function Reports() {
           </select>
         </div>
 
-        {(searchQuery || selectedCategory || stockFilter !== "all") && (
+        {window.searchQuery || selectedCategory || stockFilter !== "all" ? (
           <button
             onClick={() => {
               setSearchQuery("");
@@ -179,7 +190,7 @@ export default function Reports() {
           >
             Clear All Filters
           </button>
-        )}
+        ) : null}
       </div>
 
       {/* Items Table */}

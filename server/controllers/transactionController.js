@@ -81,14 +81,16 @@ const issueStock = async (req, res) => {
 // ─── Borrow Item ──────────────────────────────────────────────────────────────
 const borrowItem = async (req, res) => {
   try {
-    const { quantity, borrower, notes, expectedReturnDate } = req.body;
+    // Accepting 'borrower' or 'receiver' from request to prevent frontend breakage
+    const { quantity, borrower, receiver, notes, expectedReturnDate } = req.body;
     const parsedQty = Number(quantity);
+    const borrowerName = borrower || receiver;
 
     if (!parsedQty || parsedQty < 1) {
       return res.status(400).json({ message: 'Quantity must be at least 1' });
     }
 
-    if (!borrower || !borrower.trim()) {
+    if (!borrowerName || !borrowerName.trim()) {
       return res.status(400).json({ message: 'Borrower name is required' });
     }
 
@@ -106,14 +108,15 @@ const borrowItem = async (req, res) => {
     item.quantity -= parsedQty;
     await item.save();
 
+    // FIXED: Maps data to 'receiver' and 'status' fields defined in your schema
     const transaction = await Transaction.create({
       item: item._id,
       type: 'BORROW',
       quantity: parsedQty,
-      borrower: borrower.trim(),
+      receiver: borrowerName.trim(), 
       notes: notes || undefined,
       expectedReturnDate: expectedReturnDate || undefined,
-      returned: false,
+      status: 'PENDING', 
     });
 
     await transaction.populate('item', 'name unit');
@@ -143,7 +146,8 @@ const returnItem = async (req, res) => {
       return res.status(400).json({ message: 'Transaction is not a borrow record' });
     }
 
-    if (transaction.returned) {
+    // FIXED: Using 'status' enum matching your schema instead of non-existent '.returned'
+    if (transaction.status === 'RETURNED') {
       return res.status(400).json({ message: 'Item has already been returned' });
     }
 
@@ -155,7 +159,8 @@ const returnItem = async (req, res) => {
     item.quantity += transaction.quantity;
     await item.save();
 
-    transaction.returned = true;
+    // FIXED: Correctly updates schema defined statuses
+    transaction.status = 'RETURNED';
     transaction.returnedAt = new Date();
     if (notes) transaction.notes = notes;
     await transaction.save();
@@ -172,7 +177,8 @@ const returnItem = async (req, res) => {
 // ─── Get Active (Unreturned) Borrows ─────────────────────────────────────────
 const getActiveBorrows = async (req, res) => {
   try {
-    const borrows = await Transaction.find({ type: 'BORROW', returned: false })
+    // FIXED: Query matching schema status enum
+    const borrows = await Transaction.find({ type: 'BORROW', status: 'PENDING' })
       .populate('item', 'name unit')
       .sort('-createdAt');
 
