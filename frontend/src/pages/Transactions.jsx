@@ -6,7 +6,7 @@ import {
   useBorrowStockMutation,
 } from "../api/apiSlice";
 import { useState } from "react";
-import { FaPlus, FaMinus, FaHandHoldingHeart } from "react-icons/fa";
+import { FaPlus, FaMinus, FaHandHoldingHeart, FaSearch } from "react-icons/fa";
 
 export default function Transactions() {
   const { data: items = [], isLoading: itemsLoading, isError } = useGetItemsQuery();
@@ -18,13 +18,14 @@ export default function Transactions() {
   const [addQty, setAddQty] = useState({});
   const [issueModal, setIssueModal] = useState(null);
   const [borrowModal, setBorrowModal] = useState(null);
+  const [searchQuery, setSearchQuery] = useState("");
 
   const [issueData, setIssueData] = useState({ quantity: "", receiver: "" });
-  
-  const [borrowData, setBorrowData] = useState({ 
-    quantity: "", 
-    borrowerName: "", 
-    expectedReturnDate: "" 
+
+  const [borrowData, setBorrowData] = useState({
+    quantity: "",
+    borrowerName: "",
+    expectedReturnDate: "",
   });
 
   const handleAddStock = async (itemId) => {
@@ -74,36 +75,24 @@ export default function Transactions() {
     try {
       const qty = Number(borrowData.quantity);
       if (!qty || qty < 1) return alert("Quantity must be at least 1");
-      
+
       if (!borrowData.borrowerName.trim()) {
         return alert("Add the borrower name");
       }
-      
+
       if (!borrowData.expectedReturnDate) return alert("Return date is required");
 
-      const typedName = borrowData.borrowerName.trim();
-
-      // 🚀 BULLETPROOF PAYLOAD: Sends all potential naming variants to satisfy backend validation
+      // Controller only reads `borrower` (falls back to `receiver`) — send just that
       await borrowStock({
         id: borrowModal.itemId,
-        itemId: borrowModal.itemId,
         quantity: qty,
-        
-        // Borrower field aliases
-        borrower: typedName,          // Variant A (Common mongoose schema)
-        borrowerName: typedName,      // Variant B 
-        receiver: typedName,          // Variant C
-        name: typedName,              // Variant D
-        
-        // Return Date aliases
+        borrower: borrowData.borrowerName.trim(),
         expectedReturnDate: borrowData.expectedReturnDate,
-        returnDate: borrowData.expectedReturnDate,
       }).unwrap();
 
       setBorrowModal(null);
       setBorrowData({ quantity: "", borrowerName: "", expectedReturnDate: "" });
     } catch (err) {
-      // Catches and shows the explicit error string from your server controller
       alert(err?.data?.message || "Failed to borrow stock");
     }
   };
@@ -111,77 +100,113 @@ export default function Transactions() {
   if (itemsLoading) return <p className="p-8 text-center animate-pulse text-gray-500">Loading items...</p>;
   if (isError) return <p className="p-8 text-center text-red-500">Failed to load items.</p>;
 
+  // --- SEARCH FILTER ---
+  const filteredItems = items.filter((item) => {
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) return true;
+    return (
+      item.name?.toLowerCase().includes(q) ||
+      item.category?.name?.toLowerCase().includes(q)
+    );
+  });
+
   return (
     <div className="p-6 max-w-7xl mx-auto space-y-8">
       <h1 className="text-3xl font-bold text-gray-800">Stock Transactions</h1>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-5">
-        {items.map((item) => (
-          <div
-            key={item._id}
-            className={`group bg-white border border-gray-200 rounded-xl shadow-sm hover:shadow-lg transition-all duration-200 ${
-              item.quantity <= item.minQuantity ? "border-red-400 ring-2 ring-red-100" : ""
-            }`}
+      {/* SEARCH BAR */}
+      <div className="relative max-w-md">
+        <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm" />
+        <input
+          type="text"
+          placeholder="Search by item name or category..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+        />
+        {searchQuery && (
+          <button
+            onClick={() => setSearchQuery("")}
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 text-sm"
           >
-            <div className="p-4">
-              <img
-                src={item.imageUrl || "https://placehold.co/150x150?text=No+Image"}
-                alt={item.name}
-                className="w-full h-36 object-cover rounded-md mb-3"
-              />
-              <h3 className="font-semibold text-gray-800 truncate">{item.name}</h3>
-              <p className="text-sm text-gray-500">{item.category?.name || "No Category"}</p>
-              <p className="text-lg font-medium mt-2">
-                {item.quantity} <span className="text-sm text-gray-600">{item.unit}</span>
-              </p>
-              {item.borrowable && (
-                <p className="text-xs text-purple-600 mt-1 font-medium bg-purple-50 inline-block px-2 py-0.5 rounded">
-                  Borrowable (Out: {item.borrowedQuantity})
-                </p>
-              )}
-            </div>
+            ✕
+          </button>
+        )}
+      </div>
 
-            <div className="px-4 pb-4 space-y-3">
-              {/* Add Stock */}
-              <div className="flex items-center gap-2 bg-gray-50 p-2 rounded-lg border border-gray-200">
-                <input
-                  type="number"
-                  min="1"
-                  placeholder="Qty"
-                  value={addQty[item._id] || ""}
-                  onChange={(e) => setAddQty({ ...addQty, [item._id]: e.target.value })}
-                  className="flex-1 min-w-0 px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-5">
+        {filteredItems.length === 0 ? (
+          <p className="col-span-full text-center text-gray-500 py-8">
+            No items match "{searchQuery}"
+          </p>
+        ) : (
+          filteredItems.map((item) => (
+            <div
+              key={item._id}
+              className={`group bg-white border border-gray-200 rounded-xl shadow-sm hover:shadow-lg transition-all duration-200 ${
+                item.quantity <= item.minQuantity ? "border-red-400 ring-2 ring-red-100" : ""
+              }`}
+            >
+              <div className="p-4">
+                <img
+                  src={item.imageUrl || "https://placehold.co/150x150?text=No+Image"}
+                  alt={item.name}
+                  className="w-full h-36 object-cover rounded-md mb-3"
                 />
-                <button
-                  onClick={() => handleAddStock(item._id)}
-                  disabled={!addQty[item._id]}
-                  className="px-3 py-2 bg-green-600 text-white text-sm rounded-md hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition flex items-center gap-1"
-                >
-                  <FaPlus /> Add
-                </button>
+                <h3 className="font-semibold text-gray-800 truncate">{item.name}</h3>
+                <p className="text-sm text-gray-500">{item.category?.name || "No Category"}</p>
+                <p className="text-lg font-medium mt-2">
+                  {item.quantity} <span className="text-sm text-gray-600">{item.unit}</span>
+                </p>
+                {item.borrowable && (
+                  <p className="text-xs text-purple-600 mt-1 font-medium bg-purple-50 inline-block px-2 py-0.5 rounded">
+                    Borrowable (Out: {item.borrowedQuantity})
+                  </p>
+                )}
               </div>
 
-              {/* Action Buttons */}
-              <div className="flex gap-2">
-                <button
-                  onClick={() => openIssueModal(item)}
-                  disabled={item.quantity < 1}
-                  className="flex-1 px-3 py-2 bg-blue-600 text-white text-sm rounded-md hover:bg-blue-700 disabled:bg-gray-400 transition flex justify-center items-center gap-1"
-                >
-                  <FaMinus /> Issue
-                </button>
-                
-                <button
-                  onClick={() => openBorrowModal(item)}
-                  disabled={item.quantity < 1}
-                  className="flex-1 px-3 py-2 bg-purple-600 text-white text-sm rounded-md hover:bg-purple-700 disabled:bg-gray-400 transition flex justify-center items-center gap-1"
-                >
-                  <FaHandHoldingHeart /> Borrow
-                </button>
+              <div className="px-4 pb-4 space-y-3">
+                {/* Add Stock */}
+                <div className="flex items-center gap-2 bg-gray-50 p-2 rounded-lg border border-gray-200">
+                  <input
+                    type="number"
+                    min="1"
+                    placeholder="Qty"
+                    value={addQty[item._id] || ""}
+                    onChange={(e) => setAddQty({ ...addQty, [item._id]: e.target.value })}
+                    className="flex-1 min-w-0 px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
+                  />
+                  <button
+                    onClick={() => handleAddStock(item._id)}
+                    disabled={!addQty[item._id]}
+                    className="px-3 py-2 bg-green-600 text-white text-sm rounded-md hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition flex items-center gap-1"
+                  >
+                    <FaPlus /> Add
+                  </button>
+                </div>
+
+                {/* Action Buttons */}
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => openIssueModal(item)}
+                    disabled={item.quantity < 1}
+                    className="flex-1 min-w-0 px-2 py-2 bg-blue-600 text-white text-sm rounded-md hover:bg-blue-700 disabled:bg-gray-400 transition flex justify-center items-center gap-1"
+                  >
+                    <FaMinus className="shrink-0" /> <span className="truncate">Issue</span>
+                  </button>
+
+                  <button
+                    onClick={() => openBorrowModal(item)}
+                    disabled={item.quantity < 1}
+                    className="flex-1 min-w-0 px-2 py-2 bg-purple-600 text-white text-sm rounded-md hover:bg-purple-700 disabled:bg-gray-400 transition flex justify-center items-center gap-1"
+                  >
+                    <FaHandHoldingHeart className="shrink-0" /> <span className="truncate">Borrow</span>
+                  </button>
+                </div>
               </div>
             </div>
-          </div>
-        ))}
+          ))
+        )}
       </div>
 
       {/* ISSUE MODAL */}
